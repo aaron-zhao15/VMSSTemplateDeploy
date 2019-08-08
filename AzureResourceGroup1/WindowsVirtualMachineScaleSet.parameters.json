@@ -13,6 +13,25 @@
     },
     "adminPassword": {
       "value": "Password1234"
+    },
+    "sourceImageVhdUri": {
+      "value": ""
+    },
+    "subnetId": {
+      "value": "/subscriptions/8a6cf435-7351-4526-ab99-f18c76944947/resourceGroups/ADVMRG/providers/Microsoft.Network/virtualNetworks/ADVMRG-vnet/subnets/default"
+    },
+    "domainName": {
+      "value": "test.domain"
+    },
+    "domainUsername": {
+      "value": "Admin01"
+    },
+    "domainJoinPassword": {
+      "value": "Password1234"
+    },
+    "ouPath": {
+      "value": "OU=test; DC=domain"
     }
+    
   }
 }

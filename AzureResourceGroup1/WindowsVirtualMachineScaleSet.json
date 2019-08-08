@@ -4,7 +4,7 @@
   "parameters": {
     "vmSize": {
       "type": "string",
-      "defaultValue": "Standard_A1",
+      "defaultValue": "Standard_B1s",
       "minLength": 1
     },
     "windowsOSVersion": {
@@ -48,6 +48,33 @@
         "description": "Administrator password on all VMs"
       }
     },
+    "subnetId": {
+      "type": "string"
+    },
+    "sourceImageVhdUri": {
+      "type": "string",
+      "metadata": {
+        "description": "The source of the blob containing the custom image"
+      }
+    },
+    "domainName": {
+      "type": "string"
+    },
+    "domainUsername": {
+      "type": "string"
+    },
+    "domainJoinPassword": {
+      "type": "securestring"
+    },
+    "domainJoinOptions": {
+      "type": "int",
+      "defaultValue": 3
+    },
+    "ouPath": {
+      "type": "string",
+      "defaultValue": ""
+    }
+      /*
     "userImageStorageAccountName": {
       "type": "string",
       "metadata": {
@@ -59,8 +86,8 @@
       "metadata": {
         "description": "Name of customized VHD"
       }
-    }
-  },
+    }*/
+    },
   "variables": {
     "location": "East US",
     "storageAccountType": "Standard_LRS",
@@ -68,19 +95,15 @@
     "namingInfix": "[toLower(substring(concat(parameters('vmssName'), uniqueString(resourceGroup().id)), 0, 9))]",
     "newStorageAccountSuffix": "[concat(variables('namingInfix'), 'sa')]",
     "uniqueStringArray": [
-      "[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '0')), variables('newStorageAccountSuffix'))]",
-      "[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '1')), variables('newStorageAccountSuffix'))]",
-      "[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '2')), variables('newStorageAccountSuffix'))]",
-      "[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '3')), variables('newStorageAccountSuffix'))]",
-      "[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '4')), variables('newStorageAccountSuffix'))]"
+      "[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '0')), variables('newStorageAccountSuffix'))]"
     ],
     "vhdContainerName": "[concat(variables('namingInfix'), 'vhd')]",
     "osDiskName": "[concat(variables('namingInfix'), 'osdisk')]",
-    "addressPrefix": "10.0.0.0/16",
-    "subnetPrefix": "10.0.240.0/24",
-    "virtualNetworkName": "WORE-VNET-TST",
+    "addressPrefix": "10.1.0.0/24",
+    "subnetPrefix": "10.1.0.80/28",
+    "virtualNetworkName": "ADVMRG-vnet",
     "publicIPAddressName": "[concat(variables('namingInfix'), 'pip')]",
-    "subnetName": "wore-tst",
+    "subnetName": "webserversubnet-tst",
     "loadBalancerName": "[concat(variables('namingInfix'), 'lb')]",
     "publicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]",
     "lbID": "[resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName'))]",
@@ -101,7 +124,7 @@
     "imageName": "IISVM-image-20190722171036"
   },
   "resources": [
-    {
+    /*{
       "type": "Microsoft.Network/virtualNetworks",
       "name": "[variables('virtualNetworkName')]",
       "location": "[variables('location')]",
@@ -124,7 +147,7 @@
           }
         ]
       }
-    },
+    },*/
     {
       "type": "Microsoft.Storage/storageAccounts",
       "name": "[variables('uniqueStringArray')[copyIndex()]]",
@@ -208,44 +231,39 @@
       "tags": {
         "displayName": "VMScaleSet"
       },
-      "dependsOn": [
-        "[concat('Microsoft.Network/loadBalancers/',variables('loadBalancerName'))]",
-        "[concat('Microsoft.Network/virtualNetworks/',variables('virtualNetworkName'))]",
-        "[concat('Microsoft.Compute/images/',variables('imageName'))]"
-      ],
+      
       "sku": {
         "name": "[parameters('vmSize')]",
         "tier": "Standard",
         "capacity": "[parameters('instanceCount')]"
       },
       "properties": {
-        "overprovision": "true",
+        "overprovision": true,
         "upgradePolicy": {
           "mode": "Manual"
         },
         "virtualMachineProfile": {
           "storageProfile": {
             "osDisk": {
-              "imageReference": {
-                /*"publisher": "Canonical",
-              "offer": "UbuntuServer",
-              "sku": "16.04-LTS",
-              "version": "latest",*/
-                "id": "[resourceId('Microsoft.Compute/images', variables('imageName'))]"
-                //"id": "/subscriptions/8a6cf435-7351-4526-ab99-f18c76944947/resourceGroups/ADVMRG/providers/Microsoft.Compute/images/IISVM-image-20190722171036"
+              "image": {
+                "uri": "https://advmrgdisks.blob.core.windows.net/vhds/IISVM0120190806165256.vhd"
               },
+              "osType": "Windows",
+              /*"osState": "Generalized",
+              "blobUri": "[parameters('sourceImageVhdUri')]",
+              "storageAccountType": "Standard_LRS",
               "vhdContainers": [
                 "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', variables('uniqueStringArray')[0]), '2016-01-01').primaryEndpoints.blob, variables('vhdContainerName'))]"
-              ],
+              ],*/
               "name": "[variables('osDiskName')]",
               "caching": "ReadWrite",
-              "createOption": "FromImage",
-              "image": {
+              "createOption": "FromImage"
+              /*"image": {
                 "uri": "[parameters('userImageVhdName')]"
               },
               "vhd": {
                 "uri": "[parameters('userImageVhdName')]"
-              }
+              }*/
             }
           },
           "osProfile": {
@@ -264,7 +282,8 @@
                       "name": "[variables('ipConfigName')]",
                       "properties": {
                         "subnet": {
-                          "id": "[concat(resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName')), '/subnets/', variables('subnetName'))]"
+                          "id": "[parameters('subnetId')]"
+                          //"[concat(resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName')), '/subnets/', variables('subnetName'))]"
                         },
                         "loadBalancerBackendAddressPools": [
                           {
@@ -284,6 +303,32 @@
             ]
           },
 
+          "extensionProfile": {
+            "extensions": [
+              {
+                "name": "joindomain",
+                "properties": {
+                  "publisher": "Microsoft.Compute",
+                  "type": "JsonADDomainExtension",
+                  "typeHandlerVersion": "1.3",
+                  "settings": {
+                    "Name": "[parameters('domainName')]",
+                    "Options": "[parameters('domainJoinOptions')]",
+                    "OUPath": "[parameters('ouPath')]",
+                    "Restart": "true",
+                    "User": "[concat(parameters('domainName'), '\\)', parameters('domainUsername'))]"
+                  },
+                  "protectedsettings": {
+                    "Password": "[parameters('domainJoinPassword')]"
+                  }
+                }
+              }
+            ]
+          }
+
+
+
+          /*
           "extensionProfile": {
             "extensions": [
               {
@@ -572,6 +617,9 @@
               }
             ]
           }
+          */
+
+
         }
       }
     }
